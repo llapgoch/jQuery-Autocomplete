@@ -64,6 +64,7 @@
                 width: 'auto',
                 minChars: 1,
                 maxHeight: 300,
+				timeout: 250,
                 deferRequestBy: 0,
                 params: {},
                 formatResult: Autocomplete.formatResult,
@@ -108,6 +109,7 @@
         that.isLocal = false;
         that.suggestionsContainer = null;
         that.noSuggestionsContainer = null;
+		that.timeout = null;
         that.options = $.extend({}, defaults, options);
         that.classes = {
             selected: 'autocomplete-selected',
@@ -221,7 +223,7 @@
         abortAjax: function () {
             var that = this;
             if (that.currentRequest) {
-                that.currentRequest.abort();
+				that.currentRequest.abort();
                 that.currentRequest = null;
             }
         },
@@ -567,7 +569,7 @@
                 options.onSearchComplete.call(that.element, q, response.suggestions);
             } else if (!that.isBadQuery(q)) {
                 that.abortAjax();
-
+				
                 ajaxSettings = {
                     url: serviceUrl,
                     data: params,
@@ -576,16 +578,22 @@
                 };
 
                 $.extend(ajaxSettings, options.ajaxSettings);
-
-                that.currentRequest = $.ajax(ajaxSettings).done(function (data) {
-                    var result;
-                    that.currentRequest = null;
-                    result = options.transformResult(data, q);
-                    that.processResponse(result, q, cacheKey);
-                    options.onSearchComplete.call(that.element, q, result.suggestions);
-                }).fail(function (jqXHR, textStatus, errorThrown) {
-                    options.onSearchError.call(that.element, q, jqXHR, textStatus, errorThrown);
-                });
+				
+				if(this.timeout){
+					window.clearTimeout(this.timeout);
+				}
+				
+				this.timeout = window.setTimeout(function(){
+	                that.currentRequest = $.ajax(ajaxSettings).done(function (data) {
+	                    var result;
+	                    that.currentRequest = null;
+	                    result = options.transformResult(data, q);
+	                    that.processResponse(result, q, cacheKey);
+	                    options.onSearchComplete.call(that.element, q, result.suggestions);
+	                }).fail(function (jqXHR, textStatus, errorThrown) {
+	                    options.onSearchError.call(that.element, q, jqXHR, textStatus, errorThrown);
+	                });
+				}, options.timeout);
             } else {
                 options.onSearchComplete.call(that.element, q, []);
             }
